@@ -8,12 +8,27 @@ import json
 import os
 import threading
 import uuid
+from functools import wraps
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify, Response
 
 from clean_podcast import process_video, extract_video_id
 
 app = Flask(__name__)
+
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        pw = os.environ.get('APP_PASSWORD', '')
+        if not auth or auth.password != pw:
+            return Response(
+                'Access denied', 401,
+                {'WWW-Authenticate': 'Basic realm="Login Required"'}
+            )
+        return f(*args, **kwargs)
+    return decorated
 
 # Store jobs in memory (for simplicity)
 jobs = {}
@@ -41,12 +56,14 @@ transcript_cache = load_cache()
 
 
 @app.route("/")
+@requires_auth
 def index():
     """Serve the main page."""
     return render_template("index.html")
 
 
 @app.route("/transcribe", methods=["POST"])
+@requires_auth
 def transcribe():
     """Start a transcription job."""
     data = request.get_json()
@@ -109,6 +126,7 @@ def transcribe():
 
 
 @app.route("/status/<job_id>")
+@requires_auth
 def status(job_id):
     """Check job status."""
     job = jobs.get(job_id)
@@ -133,6 +151,7 @@ def status(job_id):
 
 
 @app.route("/download/<job_id>")
+@requires_auth
 def download(job_id):
     """Download the transcript as a markdown file."""
     from urllib.parse import quote
@@ -163,6 +182,7 @@ def download(job_id):
 
 
 @app.route("/download/<job_id>/pdf")
+@requires_auth
 def download_pdf(job_id):
     """Download the transcript as a PDF file."""
     from urllib.parse import quote
