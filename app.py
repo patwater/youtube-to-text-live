@@ -55,6 +55,11 @@ def save_cache(cache):
 transcript_cache = load_cache()
 
 
+@app.route("/health")
+def health():
+    return "ok", 200
+
+
 @app.route("/")
 @requires_auth
 def index():
