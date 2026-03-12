@@ -7,9 +7,7 @@ Extracts YouTube transcripts and cleans them using Gemini Pro.
 import argparse
 import os
 import re
-import subprocess
 import sys
-import tempfile
 import urllib.request
 import json
 from pathlib import Path
@@ -47,70 +45,16 @@ def get_video_info(url: str) -> dict:
 
 
 def extract_transcript(url: str) -> str:
-    """Extract transcript from YouTube video using yt-dlp."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # Download subtitles using yt-dlp
-        result = subprocess.run(
-            [
-                "yt-dlp",
-                "--write-auto-sub",
-                "--sub-lang", "en",
-                "--skip-download",
-                "--sub-format", "vtt",
-                "-o", f"{tmpdir}/%(id)s.%(ext)s",
-                url,
-            ],
-            capture_output=True,
-            text=True,
-        )
+    """Extract transcript from YouTube video using youtube_transcript_api."""
+    video_id = extract_video_id(url)
 
-        if result.returncode != 0:
-            raise Exception(f"Failed to extract transcript: {result.stderr}")
+    try:
+        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["en"])
+    except Exception:
+        # Fall back to any available language
+        transcript = YouTubeTranscriptApi.get_transcript(video_id)
 
-        # Find the subtitle file
-        vtt_files = list(Path(tmpdir).glob("*.vtt"))
-        if not vtt_files:
-            raise Exception("No transcript found for this video")
-
-        vtt_file = vtt_files[0]
-
-        # Parse VTT and extract text
-        with open(vtt_file, "r", encoding="utf-8") as f:
-            content = f.read()
-
-        return parse_vtt(content)
-
-
-def parse_vtt(vtt_content: str) -> str:
-    """Parse VTT file and extract clean text."""
-    lines = vtt_content.split("\n")
-    text_lines = []
-    seen_lines = set()
-
-    for line in lines:
-        # Skip headers, timestamps, and empty lines
-        line = line.strip()
-        if not line:
-            continue
-        if line.startswith("WEBVTT"):
-            continue
-        if line.startswith("Kind:") or line.startswith("Language:"):
-            continue
-        if re.match(r"^\d{2}:\d{2}", line):  # Timestamp line
-            continue
-        if re.match(r"^[\d\-:.\s>]+$", line):  # Cue identifier
-            continue
-
-        # Remove VTT formatting tags
-        line = re.sub(r"<[^>]+>", "", line)
-        line = re.sub(r"&nbsp;", " ", line)
-
-        # Skip duplicates (auto-subs often repeat)
-        if line not in seen_lines:
-            seen_lines.add(line)
-            text_lines.append(line)
-
-    return " ".join(text_lines)
+    return " ".join(snippet["text"] for snippet in transcript)
 
 
 def generate_takeaways(transcript: str, video_title: str, api_key: str) -> str:
