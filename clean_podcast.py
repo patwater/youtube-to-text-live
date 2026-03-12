@@ -47,14 +47,9 @@ def get_video_info(url: str) -> dict:
 def extract_transcript(url: str) -> str:
     """Extract transcript from YouTube video using youtube_transcript_api."""
     video_id = extract_video_id(url)
-
-    try:
-        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["en"])
-    except Exception:
-        # Fall back to any available language
-        transcript = YouTubeTranscriptApi.get_transcript(video_id)
-
-    return " ".join(snippet["text"] for snippet in transcript)
+    ytt_api = YouTubeTranscriptApi()
+    transcript_list = ytt_api.fetch(video_id)
+    return " ".join([snippet.text for snippet in transcript_list])
 
 
 def generate_takeaways(transcript: str, video_title: str, api_key: str) -> str:
