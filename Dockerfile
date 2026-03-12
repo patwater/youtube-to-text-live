@@ -23,8 +23,8 @@ COPY app.py clean_podcast.py ./
 COPY templates/ templates/
 COPY static/ static/
 
-# Expose port
-EXPOSE 8080
+# Expose port (Railway sets PORT dynamically)
+EXPOSE ${PORT:-8080}
 
-# Run with gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
+# Run with gunicorn (shell form so $PORT is expanded at runtime)
+CMD gunicorn --bind 0.0.0.0:${PORT:-8080} app:app

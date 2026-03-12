@@ -342,6 +342,7 @@ if __name__ == "__main__":
                     key, value = line.split("=", 1)
                     os.environ[key] = value
 
+    port = int(os.environ.get("PORT", 8080))
     print("Starting Podcast Cleaner Web App...")
-    print("Open http://127.0.0.1:8080 in your browser")
-    app.run(debug=True, host="0.0.0.0", port=8080)
+    print(f"Open http://127.0.0.1:{port} in your browser")
+    app.run(debug=True, host="0.0.0.0", port=port)
